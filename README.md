@@ -53,7 +53,7 @@ over 20 iterations while the step norm decays from 3.35 to 0.10. That is the kin
 stable convergence I want on real data, where there is no true generator to compare
 against.
 
-## Results
+## Figures
 
 <table>
   <tr>
