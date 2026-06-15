@@ -1,0 +1,7 @@
+{
+  "target_logP": -11.512925464970229,
+  "target_P": 1e-05,
+  "gamma_tv": 1.0,
+  "gamma_q": 0.01,
+  "final_avg_loglik": -3.30539062621512
+}
