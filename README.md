@@ -18,7 +18,7 @@ likelihood with applications to the NYC yellow taxi graph and predator-prey mode
    define an undirected zone transition graph with 199 edges.
 
 2. Graph Dirac operator. The signed incidence matrix B gives the bipartite Dirac
-   operator D = [[0, B^T], [B, 0]], whose eigenvectors form the Fourier basis on the
+   operator D = [[0, B], [B^T, 0]], whose eigenvectors form the Fourier basis on the
    augmented zone-and-edge space. No Laplacian is used.
 
 3. Three generators, compared.
