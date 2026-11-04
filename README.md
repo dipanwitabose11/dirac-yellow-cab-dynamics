@@ -1,125 +1,142 @@
-# Yellow cab dynamics: a generator for NYC taxi movement
+# Penalized EM from endpoint-only taxi trips
 
-This is the hardest application in my research, and the one I find most fun. I learn a
-continuous-time Markov chain (CTMC) generator for taxi movement across 30 Manhattan
-zones directly from NYC yellow cab trip records, in the censored setting where I only
-see zone to zone endpoints and the true generator is unknown. The whole point is to
-show that the same Dirac machinery I validate on synthetic and analytic benchmarks
-carries over to noisy, real mobility data at scale.
+Code and results for the NYC example in the paper
 
-This study, together with the predator-prey model, feeds into a paper I am preparing,
-"Inferring hidden trajectories in endpoint-only Markov jump processes: regularized
-likelihood with applications to the NYC yellow taxi graph and predator-prey model."
+> D. Bose and B. G. Bodmann, *Iterative regularized likelihood maximization for
+> continuous-time Markov processes with endpoint-only observations* (in preparation).
 
-## Pipeline
+The paper estimates the generator $Q$ of a continuous-time Markov chain when each
+trajectory is observed only at its start and end. The endpoint likelihood need not
+attain its supremum, so a penalty $\lambda R_Q$ is subtracted, where $R_Q$ is a
+weighted $\ell^1$ norm of the coefficients of $Q$ in a Parseval frame built from the
+Dirac operator of the graph. The penalized endpoint log-likelihood
+$\ell_\lambda = \ell - \lambda R_Q$ is maximized by an expectation–maximization (EM)
+recursion. This folder runs that recursion on the yellow-cab trips in the repository
+root and checks its convergence.
 
-1. Zone graph from trip data. From `yellow_tripdata_2016-01.csv` I select the busiest
-   zones (here the 30 most active TLC zones), and observed pickups and drop-offs
-   define an undirected zone transition graph with 199 edges.
+## Setup
 
-2. Graph Dirac operator. The signed incidence matrix B gives the bipartite Dirac
-   operator D = [[0, B], [B^T, 0]], whose eigenvectors form the Fourier basis on the
-   augmented zone-and-edge space. No Laplacian is used.
+| | |
+|---|---|
+| Trips | the 64,999-record extract `../yellow_tripdata_2016-01.csv` (January 2016) |
+| Zones | coordinates rotated by 29° so that the avenues run vertically, grouped into 0.7 × 0.9 km cells; the 35 cells with the most pickups and drop-offs are the zones |
+| Links | one link state for each pair of zones whose cells share a side: 51 links |
+| State space | 35 zones + 51 links = 86 states; the 204 allowed jumps are zone → incident link and link → its two zones |
+| Observations | trips that start and end in these zones and last 1 to 90 minutes: $K = 31{,}498$; durations grouped into 16 quantile bins (2.1 to 25.6 minutes) |
+| Penalty | $\lambda = 0.413$, floor $\varepsilon = 0.01$ on every allowed rate |
+| Start | the uniform generator: rate $c = 74.79$ per hour on all 204 allowed jumps |
 
-3. Three generators, compared.
-   - Q_emp, the empirical generator from raw transition counts.
-   - Q0, a generator from a constrained Dirac-spectral objective.
-   - Q_em, an EM-refined generator over bridge sub-intervals.
+Each iteration has two steps.
 
-4. Bridge refinement and error analysis. I reconstruct backward Schrodinger
-   potentials and Doob h-transform bridges from each generator, then use iterative
-   reference-layout refinement and a pointwise bell-curve error analysis to see how
-   sharply the learned dynamics reproduce observed zone to zone routes.
+* **E-step.** The expected number of jumps along each allowed transition and the expected
+  time in each state, given the observed endpoints, from the forward–backward
+  factorization. They are computed with Van Loan's block matrix exponential: one
+  172 × 172 exponential per duration bin, so 16 per iteration.
+* **M-step.** Maximize the expected complete-data log-likelihood minus $\lambda R_Q$, a
+  strictly concave problem, with Clarabel through CVXPY (gap and feasibility tolerances
+  $10^{-10}$). A solution is accepted only if it does not decrease this objective;
+  otherwise the default Clarabel settings and then SCS are tried, and the current
+  iterate is kept if none succeeds.
 
-5. 3D structure views. Tube stability checks and petal visualizations render the
-   bridge geometry and its uncertainty in three dimensions.
+All rates are per hour.
+
+This is not the same graph as the analysis in the repository root, which uses the 30
+busiest TLC zones and a Doob-bridge refinement. Here the zones are grid cells, links are
+states of the chain, and there is no bridge step.
+
+## Running it
+
+```bash
+cd penalized_em_endpoints
+pip install -r requirements.txt
+
+python3 run_uniform.py           # the EM run (saved after every iteration in runs/)
+python3 convergence_report.py    # report.txt and figures 04-07 in output_c74.79/
+python3 state_space_figures.py   # figures 01-03 in figures/
+```
+
+`runs/uniform_c74.79.npz` holds the run reported below, so `run_uniform.py` only says
+that this run has already stopped. To recompute it from the uniform start, delete that
+file first; one iteration takes about 20 seconds on a laptop. The run stops by itself
+when the relative step falls below $10^{-6}$ (`--tol`), when the M-step can no longer
+improve the objective, or after 2000 iterations (`--max-iters`). Ctrl-C and the same
+command again continue from the last saved iteration. Other options: `--c` (initial
+rate), `--lam` (penalty weight); `python3 convergence_report.py --no-contour` skips the
+contour figure.
 
 ## Results
 
-```
-Trips loaded                3,944        Zones                     30
-Zone-graph edges            199          Endpoint samples          1,000
-Horizon                     1.0
-Q0 optimization             converged (26 iterations, projected-gradient stop)
-EM iterations               20 (monotone log-likelihood improvement)
+The M-step could not improve the objective at iteration 178, so the run stopped there,
+and the report uses iterations 0 to 177. The full numbers are in
+[`output_c74.79/report.txt`](output_c74.79/report.txt).
 
-Exact log-likelihood  Q0    -3.3054
-Exact log-likelihood  Q_h   -3.8618
-Exact log-likelihood  Q_em  -2.9506   best fit to held-out endpoint transitions
-```
+| Quantity | Value |
+|---|---|
+| $\ell_\lambda/K$ (penalized log-likelihood per trip) | −4.4848 → −3.8145, never decreasing; 90% of the gain after 29 iterations |
+| $\ell/K$ (endpoint log-likelihood per trip) | −4.4063 → −3.5063 |
+| $R_Q$ | 5,981 → 23,504; at the end $\lambda R_Q/K = 0.31$ |
+| Step $\lVert v^{(k)}-v^{(k-1)}\rVert$ at $k$ = 1, 50, 100, 150, 177 | 70.2, 15.1, 3.62, 0.82, 0.39 |
+| Step ratio per iteration, windows of 25 iterations from $k\approx50$ | between 0.970 and 0.973 |
+| Remaining path if this ratio persists | about 13, i.e. 0.5% of $\lVert v^{(177)}\rVert = 2660$ |
+| Path length / distance from start to end | 1944 / 1896 |
+| Increments of $\ell_\lambda$ on $k \ge 88$ | fitted by $0.955^k$ (rms residual 0.181) and by $k^{-5.92}$ (0.145) |
+| Smallest rate over all iterates | 11.52 per hour, against the floor 0.01 |
+| Zone → link rates of $Q^{(177)}$ | 11.5 to 96.0 per hour |
+| Link → zone rates of $Q^{(177)}$ | 248.4 to 271.1 per hour |
+| Mean holding time | 0.28 to 1.17 minutes in a zone, 0.11 to 0.12 minutes in a link |
 
-EM improves the average endpoint log-likelihood monotonically from -3.078 to -2.951
-over 20 iterations while the step norm decays from 3.35 to 0.10. That is the kind of
-stable convergence I want on real data, where there is no true generator to compare
-against.
+$v^{(k)}$ is the vector of the 204 allowed rates of the $k$-th iterate. A constant step
+ratio is what geometric convergence looks like. With a Łojasiewicz exponent
+$\theta \le 1/2$ at the limit, the convergence theory predicts geometric decay. Because
+the smallest rate stays more than a thousand times above the floor, the floor is never
+active.
 
 ## Figures
 
 <table>
   <tr>
-    <td><img src="figures/01_selected_zones_grid.png" width="100%"><br><sub>The 30 selected NYC zones</sub></td>
-    <td><img src="figures/02_zone_support_graph.png" width="100%"><br><sub>Observed zone-transition graph</sub></td>
+    <td><img src="figures/01_graph.png" width="100%"><br><sub>Zones (discs) and links (diamonds) on the street map</sub></td>
+    <td><img src="figures/02_dirac.png" width="100%"><br><sub>Nonzero entries of the Dirac operator, zones first</sub></td>
+    <td><img src="figures/03_spectrum.png" width="100%"><br><sub>Spectrum of the Dirac operator; 18 zero eigenvalues</sub></td>
   </tr>
   <tr>
-    <td><img src="figures/05_Q_emp_heatmap.png" width="100%"><br><sub>Empirical generator</sub></td>
-    <td><img src="figures/13_Q_em_heatmap.png" width="100%"><br><sub>EM-refined generator</sub></td>
+    <td colspan="3"><img src="output_c74.79/07_convergence.png" width="100%"><br><sub>Step length (log axis), cumulative path length, and increments of the penalized log-likelihood with geometric and power-law fits</sub></td>
   </tr>
   <tr>
-    <td><img src="figures/04_dirac_spectrum.png" width="100%"><br><sub>Dirac spectrum</sub></td>
-    <td><img src="figures/15_em_loglik.png" width="100%"><br><sub>EM log-likelihood convergence</sub></td>
+    <td><img src="output_c74.79/04_generator.png" width="100%"><br><sub>The estimate Q<sup>(177)</sup>; zones first, blank = not allowed, diagonal = minus the exit rates</sub></td>
+    <td><img src="output_c74.79/05_ascent_and_bounds.png" width="100%"><br><sub>Penalized log-likelihood, log-likelihood and R<sub>Q</sub> against the iteration, with the bounds of the theory (dashed)</sub></td>
+    <td><img src="output_c74.79/06_penalized_likelihood.png" width="100%"><br><sub>Penalized log-likelihood on the plane through the start, iterate 8 and the end; dots are the iterates</sub></td>
   </tr>
 </table>
 
-All figures are in [`figures/`](figures), the learned generators and Dirac data are in
-[`results/`](results), and an example reconstructed route is in `reycd3outputs/`.
-
-## Penalized EM from endpoints
-
-The folder [`penalized_em_endpoints/`](penalized_em_endpoints) holds the code, results and
-explanation for the NYC example of a second paper, *Iterative regularized likelihood
-maximization for continuous-time Markov processes with endpoint-only observations*. On
-the same trip extract, it builds 35 grid-cell zones and 51 link states. It then maximizes
-the Dirac-penalized endpoint log-likelihood by expectation--maximization, starting from
-the uniform generator, and reports how the iterates converge: steps shrink by a factor
-of 0.970 to 0.973 per iteration, and every rate stays above 11.52 per hour. See its
-[README](penalized_em_endpoints/README.md).
-
-## What is in here
+## Files
 
 ```
-ycd3_reference_refinement.py     iterative Doob-bridge reference-layout refinement
-ycd3_tube_stability_check.py     3D tube stability check
-ycd3_petal_visualization.py      petal-style bridge visualization
-ycd3_petal_3d.py                 3D petal rendering
-yellow_tripdata_2016-01.csv      input trip records (NYC TLC, January 2016 sample)
-ycd3outputs/                     generators (CSV), Dirac data, figures, summaries
-reycd3outputs/                   refined-layout route outputs
-penalized_em_endpoints/          penalized EM from endpoints (second paper), with its own README
+run_uniform.py                  EM from the uniform generator, resumable
+convergence_report.py           convergence report and figures 04-07
+state_space_figures.py          figures 01-03
+em_tools.py                     EM loop with checkpoints, stopping rule, diagnostics
+run_taxi.py                     data preparation, zones and links, Dirac operator, lambda
+bridge_em.py                    E-step, M-step, regularizer, likelihoods
+em_run_v2.npz                   the companion-paper estimator Q* and an earlier run from it
+manhattan_streets.npz           Manhattan street centerline (for figure 01) + provenance .json
+runs/uniform_c74.79.npz         all iterates of the run reported above
+output_c74.79/                  report.txt and figures 04-07
+figures/                        figures 01-03
 ```
 
-## Running it
+## Notes
 
-```bash
-pip install numpy pandas scipy matplotlib
-
-# refinement and error analysis over the precomputed generators
-python ycd3_reference_refinement.py --a 9 --b 1 --c 13 --T 1.0 --max_k 3 --rho 0.27
-
-# 3D stability and petal views
-python ycd3_tube_stability_check.py
-python ycd3_petal_3d.py
-```
-
-Data comes from the NYC Taxi and Limousine Commission yellow cab trip records (a
-January 2016 sample is included). The full dataset is available from the
-[NYC TLC trip record page](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page).
-
-## Where this fits
-
-One of four repositories built on the same framework: logistic growth (synthetic
-validation), predator and prey (real ecology), rotational vector field (analytic
-ground truth), and yellow cab dynamics (this repo).
-
-## License
-
-Released under the MIT License. See [LICENSE](LICENSE).
+* **Where $\lambda$ and $c$ come from.** The values were taken from the companion-paper
+  estimator $Q^\star$ in `em_run_v2.npz`. $\lambda = 0.413$ is $0.1\lambda^\star$, where
+  $\lambda^\star = 4.131$ is the multiplier of that estimator. $c = 74.79$ gives the
+  uniform generator the same $R_Q$ as $Q^\star$. Both can be changed with `--lam` and
+  `--c`; the convergence results hold for every $\lambda > 0$.
+* **Unused code.** `bridge_em.py` also contains Doob-bridge and skeleton functions from
+  an earlier version of the project; they are not used here.
+* **Reproducibility.** Different versions of CVXPY and Clarabel can change the last
+  digits of the iterates. The stall at iteration 178 is a limit of the solver accuracy,
+  not of the method.
+* **Data.** The street geometry is the NYC Street Centerline (CSCL), obtained through the
+  R package [nycstreets](https://github.com/kjhealy/nycstreets); see
+  `manhattan_streets_provenance.json`.

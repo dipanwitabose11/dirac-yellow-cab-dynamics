@@ -1,0 +1,9 @@
+{
+ "source": "NYC Street Centerline (CSCL), NYC Open Data https://data.cityofnewyork.us/d/inkn-q76z",
+ "via": "R package data from https://github.com/kjhealy/nycstreets (data/nyc_streets_sf.rda, built from the Centerline_20251116 shapefile)",
+ "input_file": "nycstreets/data/nyc_streets_sf.rda",
+ "selection": "boroughcod == 1 (Manhattan) and (rw_type == 1 (street) or stname_lab == BROADWAY)",
+ "projection": "EPSG:2263 to EPSG:4326 (lon, lat) with pyproj",
+ "segments": 10027,
+ "broadway_segments": 411
+}
