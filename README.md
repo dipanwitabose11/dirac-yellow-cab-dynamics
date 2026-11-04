@@ -11,14 +11,13 @@ attain its supremum, so a penalty $\lambda R_Q$ is subtracted, where $R_Q$ is a
 weighted $\ell^1$ norm of the coefficients of $Q$ in a Parseval frame built from the
 Dirac operator of the graph. The penalized endpoint log-likelihood
 $\ell_\lambda = \ell - \lambda R_Q$ is maximized by an expectation–maximization (EM)
-recursion. This folder runs that recursion on the yellow-cab trips in the repository
-root and checks its convergence.
+recursion. This repository runs that recursion on NYC yellow-cab trips and checks its convergence.
 
 ## Setup
 
 | | |
 |---|---|
-| Trips | the 64,999-record extract `../yellow_tripdata_2016-01.csv` (January 2016) |
+| Trips | the 64,999-record extract `yellow_tripdata_2016-01.csv` (January 2016) |
 | Zones | coordinates rotated by 29° so that the avenues run vertically, grouped into 0.7 × 0.9 km cells; the 35 cells with the most pickups and drop-offs are the zones |
 | Links | one link state for each pair of zones whose cells share a side: 51 links |
 | State space | 35 zones + 51 links = 86 states; the 204 allowed jumps are zone → incident link and link → its two zones |
@@ -40,14 +39,9 @@ Each iteration has two steps.
 
 All rates are per hour.
 
-This is not the same graph as the analysis in the repository root, which uses the 30
-busiest TLC zones and a Doob-bridge refinement. Here the zones are grid cells, links are
-states of the chain, and there is no bridge step.
-
 ## Running it
 
 ```bash
-cd penalized_em_endpoints
 pip install -r requirements.txt
 
 python3 run_uniform.py           # the EM run (saved after every iteration in runs/)
@@ -112,6 +106,7 @@ active.
 ## Files
 
 ```
+yellow_tripdata_2016-01.csv     input trip records (NYC TLC, January 2016 extract)
 run_uniform.py                  EM from the uniform generator, resumable
 convergence_report.py           convergence report and figures 04-07
 state_space_figures.py          figures 01-03
@@ -137,6 +132,13 @@ figures/                        figures 01-03
 * **Reproducibility.** Different versions of CVXPY and Clarabel can change the last
   digits of the iterates. The stall at iteration 178 is a limit of the solver accuracy,
   not of the method.
-* **Data.** The street geometry is the NYC Street Centerline (CSCL), obtained through the
+* **Data.** The trip records are a January 2016 extract of the NYC Taxi and Limousine
+  Commission yellow cab records; the full data are on the
+  [TLC trip record page](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page).
+  The street geometry is the NYC Street Centerline (CSCL), obtained through the
   R package [nycstreets](https://github.com/kjhealy/nycstreets); see
   `manhattan_streets_provenance.json`.
+
+## License
+
+Released under the MIT License. See [LICENSE](LICENSE).
