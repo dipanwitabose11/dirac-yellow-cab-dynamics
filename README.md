@@ -73,6 +73,17 @@ against.
 All figures are in [`figures/`](figures), the learned generators and Dirac data are in
 [`results/`](results), and an example reconstructed route is in `reycd3outputs/`.
 
+## Penalized EM from endpoints
+
+The folder [`penalized_em_endpoints/`](penalized_em_endpoints) holds the code, results and
+explanation for the NYC example of a second paper, *Iterative regularized likelihood
+maximization for continuous-time Markov processes with endpoint-only observations*. On
+the same trip extract, it builds 35 grid-cell zones and 51 link states. It then maximizes
+the Dirac-penalized endpoint log-likelihood by expectation--maximization, starting from
+the uniform generator, and reports how the iterates converge: steps shrink by a factor
+of 0.970 to 0.973 per iteration, and every rate stays above 11.52 per hour. See its
+[README](penalized_em_endpoints/README.md).
+
 ## What is in here
 
 ```
@@ -83,6 +94,7 @@ ycd3_petal_3d.py                 3D petal rendering
 yellow_tripdata_2016-01.csv      input trip records (NYC TLC, January 2016 sample)
 ycd3outputs/                     generators (CSV), Dirac data, figures, summaries
 reycd3outputs/                   refined-layout route outputs
+penalized_em_endpoints/          penalized EM from endpoints (second paper), with its own README
 ```
 
 ## Running it
@@ -111,3 +123,4 @@ ground truth), and yellow cab dynamics (this repo).
 ## License
 
 Released under the MIT License. See [LICENSE](LICENSE).
+
