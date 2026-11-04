@@ -1,0 +1,63 @@
+Uniform initial generator: c = 74.7943 per hour on all 204 transitions of S0
+trips K = 31498, zones 35, links 51, states 86; lambda = 0.4131, floor = 0.01
+iterations used 177. STALLED: at k = 178 the M-step could not improve the surrogate and kept the current iterate. That step is left out; the analysis uses k = 0..177. The run had NOT converged (last real step/|v| = 1.48e-04, tol 1e-06).
+Rates and steps are per hour; steps are Euclidean norms of the change of the 204 rates.
+
+1. Numerical checks at the last iterate
+  E-step: expected occupation times sum to the total observed time, relative error 5.4e-14
+  gradient identity vs central finite differences (5 coordinates): max relative error 2.4e-06
+
+2. Predictions of the theory (Table 1 of the paper)
+  ascent: l_lambda decreased in 0 of 177 steps; min (increment - surrogate gain)/K = 7.60e-07 (must be >= 0)
+  M-step improved the surrogate in 177 of 177 steps
+  saturated bound: max_k l(Q_k)/K = -3.5063 <= l_sat/K = -2.6884
+  boundedness: max_k R(Q_k) = 23503.6 <= rho_sat = 136967.8
+  lambda R at the last iterate = 0.3083 per trip <= lambda rho_sat = 1.7964
+  floor: eta = smallest rate over all iterates = 11.522 > floor 0.01  (at iterate k = 177)
+
+3. Ascent
+  l_lambda/K: -4.484764 -> -3.814546  (90% of the gain after 29 iterations)
+  l/K:        -4.406319 -> -3.506291  (90% after 44)
+  R:          5981.2 -> 23503.6  (90% after 80)
+
+4. Convergence of the iterates
+      k       step   step/|v|  step/||Q||F     incr/K   l_lambda/K
+      1    70.2444   6.46e-02     3.44e-02   9.99e-02    -4.384824
+      5    42.1061   3.59e-02     1.96e-02   3.58e-02    -4.206097
+     10    36.7008   2.83e-02     1.57e-02   2.16e-02    -4.073965
+     25    27.2195   1.62e-02     9.20e-03   6.29e-03    -3.898140
+     50    15.0903   6.98e-03     4.00e-03   1.02e-03    -3.829616
+     75     7.5817   3.13e-03     1.80e-03   1.93e-04    -3.817738
+    100     3.6172   1.42e-03     8.14e-04   4.19e-05    -3.815349
+    125     1.7623   6.74e-04     3.87e-04   1.20e-05    -3.814777
+    150     0.8218   3.11e-04     1.79e-04   2.85e-06    -3.814613
+    177     0.3943   1.48e-04     8.52e-05   1.53e-06    -3.814546
+  |v| at the end 2660.2, ||Q||_F at the end 4627.0
+  path length sum_k step = 1943.5;  |v_end - v_0| = 1896.4
+  step ratio r in windows of 25 iterations (constant r = geometric decay):
+    k =    3..  27:  r = 0.9785
+    k =   28..  52:  r = 0.9760
+    k =   53..  77:  r = 0.9726
+    k =   78.. 102:  r = 0.9709
+    k =  103.. 127:  r = 0.9714
+    k =  128.. 152:  r = 0.9701
+    k =  153.. 177:  r = 0.9712
+  remaining path if the last ratio holds = step*r/(1-r) = 13.3 (5.0e-03 of |v|)
+  (a ratio that creeps up towards 1 means slower than geometric decay; then this is an underestimate)
+
+5. Increments of l_lambda on k >= 88
+  geometric fit: ratio 0.9553 (rms residual of log increments 0.181)
+  power-law fit: k^-5.92 (rms residual 0.145)
+  remaining gain of l_lambda/K if the geometric fit holds: 3.26e-05
+
+6. First-order condition at the last iterate: min_s ||grad l - lambda s|| / ||grad l||
+  frame coefficients below 1e-06 x largest treated as zero: 0.052
+  frame coefficients below 1e-09 x largest treated as zero: 0.052
+
+7. The last iterate Q^(177)
+  zone -> link rates             [11.52, 96.00]
+  link -> zone rates             [248.43, 271.09]
+  zone exit rates                [51.50, 217.12]
+  link exit rates                [504.12, 539.61]
+  zone mean holding time (min)   [0.28, 1.17]
+  link mean holding time (min)   [0.11, 0.12]
